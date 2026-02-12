@@ -1,29 +1,42 @@
-use ratatui::widgets::ListState;
-use std::time::Duration;
-use serde::{ Serialize, Deserialize };
 use notify_rust::Notification;
+use ratatui::widgets::ListState;
+use rodio::Decoder;
+use serde::{Deserialize, Serialize};
+use std::{fs::File, time::Duration};
 
 #[derive(PartialEq, Clone, Copy)]
-pub enum SessionMode { Work, ShortBreak, LongBreak }
+pub enum SessionMode {
+    Work,
+    ShortBreak,
+    LongBreak,
+}
 
 #[derive(PartialEq, Clone, Copy)]
-pub enum AppScreen { Timer, Tasks }
+pub enum AppScreen {
+    Timer,
+    Tasks,
+}
 
 #[derive(PartialEq, Clone, Copy)]
-pub enum InputMode { Normal, Insert, Edit, TimerEdit }
+pub enum InputMode {
+    Normal,
+    Insert,
+    Edit,
+    TimerEdit,
+}
 
 #[derive(Serialize, Deserialize)]
 pub struct Config {
     pub work_time_mins: u64,
     pub short_break_mins: u64,
     pub long_break_mins: u64,
-    pub tasks: Vec<Task>
+    pub tasks: Vec<Task>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Task {
     pub title: String,
-    pub is_done: bool
+    pub is_done: bool,
 }
 
 pub struct Pomo {
@@ -40,12 +53,25 @@ pub struct Pomo {
     pub tasks: Vec<Task>,
     pub task_state: ListState,
     pub input_buffer: String,
-    pub should_quit: bool
+    pub should_quit: bool,
+    pub sink: rodio::Sink,
+    pub stream_handle: rodio::OutputStream,
+}
+
+impl std::ops::Deref for Pomo {
+    type Target = rodio::OutputStream;
+
+    fn deref(&self) -> &Self::Target {
+        &self.stream_handle
+    }
 }
 
 impl Pomo {
     pub fn new() -> Self {
         let work = Duration::from_secs(25 * 60);
+        let stream_handle =
+            rodio::OutputStreamBuilder::open_default_stream().expect("open default audio stream");
+        let sink = rodio::Sink::connect_new(&stream_handle.mixer());
         Self {
             screen: AppScreen::Timer,
             mode: SessionMode::Work,
@@ -60,7 +86,9 @@ impl Pomo {
             tasks: Vec::new(),
             task_state: ListState::default(),
             input_buffer: String::new(),
-            should_quit: false
+            should_quit: false,
+            sink: sink,
+            stream_handle: stream_handle,
         }
     }
 
@@ -91,6 +119,7 @@ impl Pomo {
 
             self.send_notification(title, msg);
             self.transition_next_session();
+            self.play_alarm();
             self.is_running = true;
         }
     }
@@ -133,5 +162,14 @@ impl Pomo {
             .appname("pomoru")
             .timeout(5000)
             .show();
+    }
+
+    pub fn play_alarm(&self) {
+        let audio_path =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/audio/alarm-digital.mp3");
+        let source = Decoder::try_from(File::open(&audio_path).unwrap()).unwrap();
+        // Play the sound directly on the device
+        self.sink.append(source);
+        self.sink.play();
     }
 }
