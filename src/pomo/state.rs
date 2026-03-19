@@ -2,7 +2,7 @@ use notify_rust::Notification;
 use ratatui::widgets::ListState;
 use rodio::Decoder;
 use serde::{Deserialize, Serialize};
-use std::{fs::File, time::Duration};
+use std::{fs::File, thread, time::Duration};
 
 #[derive(PartialEq, Clone, Copy)]
 pub enum SessionMode {
@@ -54,24 +54,12 @@ pub struct Pomo {
     pub task_state: ListState,
     pub input_buffer: String,
     pub should_quit: bool,
-    pub sink: rodio::Sink,
-    pub stream_handle: rodio::OutputStream,
-}
-
-impl std::ops::Deref for Pomo {
-    type Target = rodio::OutputStream;
-
-    fn deref(&self) -> &Self::Target {
-        &self.stream_handle
-    }
 }
 
 impl Pomo {
     pub fn new() -> Self {
         let work = Duration::from_secs(25 * 60);
-        let stream_handle =
-            rodio::OutputStreamBuilder::open_default_stream().expect("open default audio stream");
-        let sink = rodio::Sink::connect_new(&stream_handle.mixer());
+
         Self {
             screen: AppScreen::Timer,
             mode: SessionMode::Work,
@@ -87,8 +75,6 @@ impl Pomo {
             task_state: ListState::default(),
             input_buffer: String::new(),
             should_quit: false,
-            sink: sink,
-            stream_handle: stream_handle,
         }
     }
 
@@ -119,7 +105,10 @@ impl Pomo {
 
             self.send_notification(title, msg);
             self.transition_next_session();
-            self.play_alarm();
+            thread::spawn(|| {
+                Pomo::play_alarm();
+            });
+
             self.is_running = true;
         }
     }
@@ -164,12 +153,18 @@ impl Pomo {
             .show();
     }
 
-    pub fn play_alarm(&self) {
+    pub fn play_alarm() {
+        let mut stream_handle =
+            rodio::OutputStreamBuilder::open_default_stream().expect("open default audio stream");
+        stream_handle.log_on_drop(false);
+        let sink = rodio::Sink::connect_new(&stream_handle.mixer());
         let audio_path =
             std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/audio/alarm-digital.mp3");
         let source = Decoder::try_from(File::open(&audio_path).unwrap()).unwrap();
         // Play the sound directly on the device
-        self.sink.append(source);
-        self.sink.play();
+        sink.append(source);
+        sink.play();
+
+        sink.sleep_until_end();
     }
 }
