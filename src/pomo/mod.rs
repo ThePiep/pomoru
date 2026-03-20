@@ -118,8 +118,14 @@ impl Pomo {
                 (AppScreen::Tasks, KeyCode::Char('i')) => { self.input_mode = InputMode::Insert; self.input_buffer.clear(); }
                 (AppScreen::Tasks, KeyCode::Char('e')) => self.enter_edit_mode(),
                 (AppScreen::Tasks, KeyCode::Char('d')) => self.delete_task(),
-                (AppScreen::Tasks, KeyCode::Char('j')) | (AppScreen::Tasks, KeyCode::Down) => self.next_task(),
-                (AppScreen::Tasks, KeyCode::Char('k')) | (AppScreen::Tasks, KeyCode::Up) => self.previous_task(),
+                (AppScreen::Tasks, KeyCode::Char('j')) | (AppScreen::Tasks, KeyCode::Down) => {
+                    self.next_task()
+                }
+                (AppScreen::Tasks, KeyCode::Char('k')) | (AppScreen::Tasks, KeyCode::Up) => {
+                    self.previous_task()
+                }
+                (AppScreen::Tasks, KeyCode::Char('J')) => self.move_task_down(),
+                (AppScreen::Tasks, KeyCode::Char('K')) => self.move_task_up(),
                 (AppScreen::Tasks, KeyCode::Enter) => self.toggle_task(),
                 _ => {}
             },
@@ -197,5 +203,33 @@ impl Pomo {
             None => 0,
         };
         self.task_state.select(Some(i));
+    }
+
+    pub(crate) fn move_task_up(&mut self) {
+        match self.task_state.selected() {
+            Some(0) => (),
+            Some(i) => {
+                let temp = self.tasks[i].clone();
+                let j = (i + self.tasks.len() - 1) % self.tasks.len();
+                self.tasks[i] = self.tasks[j].clone();
+                self.tasks[j] = temp;
+                self.previous_task();
+            }
+            None => (),
+        }
+    }
+
+    pub(crate) fn move_task_down(&mut self) {
+        match self.task_state.selected() {
+            Some(val) if val == self.tasks.len() - 1 => (),
+            Some(i) => {
+                let temp = self.tasks[i].clone();
+                let j = (i + 1) % self.tasks.len();
+                self.tasks[i] = self.tasks[j].clone();
+                self.tasks[j] = temp;
+                self.next_task();
+            }
+            None => (),
+        }
     }
 }
