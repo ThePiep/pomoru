@@ -1,15 +1,15 @@
 pub mod state;
 pub mod ui;
 
-use crate::pomo::state::{Pomo, AppScreen, InputMode, Task, SessionMode, Config};
+use crate::pomo::state::{AppScreen, Config, InputMode, Pomo, SessionMode, Task};
 use crossterm::{
     event::{self, Event, KeyCode},
     execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
-use ratatui::prelude::*;
-use std::{ io, time::Duration, fs };
 use directories::ProjectDirs;
+use ratatui::prelude::*;
+use std::{fs, io, time::Duration};
 
 impl Pomo {
     pub fn save(&self) -> Result<(), Box<dyn std::error::Error>> {
@@ -64,7 +64,7 @@ impl Pomo {
                 _ = second_tick.tick() => {
                     self.tick();
                 }
- 
+
                 // Tighten poll to 16ms (~60fps feel) for input responsiveness
                 event_res = tokio::task::spawn_blocking(|| event::poll(Duration::from_millis(16))) => {
                     if let Ok(Ok(true)) = event_res {
@@ -114,8 +114,13 @@ impl Pomo {
                 (AppScreen::Timer, KeyCode::Char('t')) => self.screen = AppScreen::Tasks,
                 (AppScreen::Timer, KeyCode::Char(' ')) => self.is_running = !self.is_running,
                 (AppScreen::Timer, KeyCode::Char('r')) => self.time_remaining = self.work_time,
-                (AppScreen::Tasks, KeyCode::Char('t')) | (AppScreen::Tasks, KeyCode::Esc) => self.screen = AppScreen::Timer,
-                (AppScreen::Tasks, KeyCode::Char('i')) => { self.input_mode = InputMode::Insert; self.input_buffer.clear(); }
+                (AppScreen::Tasks, KeyCode::Char('t')) | (AppScreen::Tasks, KeyCode::Esc) => {
+                    self.screen = AppScreen::Timer
+                }
+                (AppScreen::Tasks, KeyCode::Char('i')) => {
+                    self.input_mode = InputMode::Insert;
+                    self.input_buffer.clear();
+                }
                 (AppScreen::Tasks, KeyCode::Char('e')) => self.enter_edit_mode(),
                 (AppScreen::Tasks, KeyCode::Char('d')) => self.delete_task(),
                 (AppScreen::Tasks, KeyCode::Char('j')) | (AppScreen::Tasks, KeyCode::Down) => {
@@ -151,10 +156,15 @@ impl Pomo {
                             }
                         }
 
-                        InputMode::Insert => self.tasks.push(Task { title: self.input_buffer.clone(), is_done: false }),
+                        InputMode::Insert => self.tasks.push(Task {
+                            title: self.input_buffer.clone(),
+                            is_done: false,
+                        }),
 
-                        InputMode::Edit => if let Some(i) = self.task_state.selected() { 
-                            self.tasks[i].title = self.input_buffer.clone(); 
+                        InputMode::Edit => {
+                            if let Some(i) = self.task_state.selected() {
+                                self.tasks[i].title = self.input_buffer.clone();
+                            }
                         }
 
                         _ => {}
@@ -163,8 +173,12 @@ impl Pomo {
                 self.input_mode = InputMode::Normal;
             }
             KeyCode::Esc => self.input_mode = InputMode::Normal,
-            KeyCode::Backspace => { self.input_buffer.pop(); }
-            KeyCode::Char(c) => { self.input_buffer.push(c); }
+            KeyCode::Backspace => {
+                self.input_buffer.pop();
+            }
+            KeyCode::Char(c) => {
+                self.input_buffer.push(c);
+            }
             _ => {}
         }
     }
@@ -179,7 +193,9 @@ impl Pomo {
     fn delete_task(&mut self) {
         if let Some(i) = self.task_state.selected() {
             self.tasks.remove(i);
-            if self.tasks.is_empty() { self.task_state.select(None); }
+            if self.tasks.is_empty() {
+                self.task_state.select(None);
+            }
         }
     }
 
@@ -191,7 +207,13 @@ impl Pomo {
 
     fn next_task(&mut self) {
         let i = match self.task_state.selected() {
-            Some(i) => if i >= self.tasks.len() - 1 { 0 } else { i + 1 },
+            Some(i) => {
+                if i >= self.tasks.len() - 1 {
+                    0
+                } else {
+                    i + 1
+                }
+            }
             None => 0,
         };
         self.task_state.select(Some(i));
@@ -199,7 +221,13 @@ impl Pomo {
 
     fn previous_task(&mut self) {
         let i = match self.task_state.selected() {
-            Some(i) => if i == 0 { self.tasks.len() - 1 } else { i - 1 },
+            Some(i) => {
+                if i == 0 {
+                    self.tasks.len() - 1
+                } else {
+                    i - 1
+                }
+            }
             None => 0,
         };
         self.task_state.select(Some(i));

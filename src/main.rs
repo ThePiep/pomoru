@@ -1,8 +1,8 @@
 mod pomo;
+use crossterm::execute;
+use crossterm::terminal::{LeaveAlternateScreen, disable_raw_mode};
 use pomo::state::Pomo;
 use std::panic;
-use crossterm::terminal::{disable_raw_mode, LeaveAlternateScreen};
-use crossterm::execute;
 
 fn setup_panic_hook() {
     let original_hook = panic::take_hook();
