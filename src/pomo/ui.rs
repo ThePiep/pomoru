@@ -144,7 +144,7 @@ pub fn render_task_screen(f: &mut Frame, app: &mut Pomo, footer_area: Rect) {
 
     f.render_stateful_widget(list, area, &mut app.task_state);
 
-    let footer_text = "i insert • ⏎ toggle • e edit • d delete • t back";
+    let footer_text = "i insert • ⏎ toggle • e edit • J/K move task • d delete • t back";
     f.render_widget(
         Paragraph::new(footer_text)
             .alignment(Alignment::Center)
