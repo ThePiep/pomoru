@@ -2,6 +2,7 @@ pub mod state;
 pub mod ui;
 
 use crate::pomo::state::{AppScreen, Config, InputMode, Pomo, SessionMode, Task};
+use chrono::{NaiveTime, TimeZone};
 use crossterm::{
     event::{self, Event, KeyCode},
     execute,
@@ -114,6 +115,7 @@ impl Pomo {
                 (AppScreen::Timer, KeyCode::Char('t')) => self.screen = AppScreen::Tasks,
                 (AppScreen::Timer, KeyCode::Char(' ')) => self.is_running = !self.is_running,
                 (AppScreen::Timer, KeyCode::Char('r')) => self.time_remaining = self.work_time,
+                (AppScreen::Timer, KeyCode::Char('T')) => self.enter_start_time(),
                 (AppScreen::Tasks, KeyCode::Char('t')) | (AppScreen::Tasks, KeyCode::Esc) => {
                     self.screen = AppScreen::Timer
                 }
@@ -167,6 +169,20 @@ impl Pomo {
                             }
                         }
 
+                        InputMode::StartEdit => {
+                            if let (Some(existing), Ok(new_time)) = (
+                                self.start_time,
+                                NaiveTime::parse_from_str(&self.input_buffer, "%H:%M"),
+                            ) {
+                                let naive = existing.date_naive().and_time(new_time);
+                                if let Some(dt) =
+                                    existing.timezone().from_local_datetime(&naive).single()
+                                {
+                                    self.start_time = Some(dt);
+                                }
+                            }
+                        }
+
                         _ => {}
                     }
                 }
@@ -187,6 +203,16 @@ impl Pomo {
         if let Some(i) = self.task_state.selected() {
             self.input_mode = InputMode::Edit;
             self.input_buffer = self.tasks[i].title.clone();
+        }
+    }
+
+    fn enter_start_time(&mut self) {
+        match self.start_time {
+            Some(st) => {
+                self.input_mode = InputMode::StartEdit;
+                self.input_buffer = st.format("%H:%M").to_string()
+            }
+            None => (),
         }
     }
 
