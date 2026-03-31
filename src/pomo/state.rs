@@ -3,7 +3,6 @@ use notify_rust::Notification;
 use ratatui::widgets::ListState;
 use rodio::Decoder;
 use serde::{Deserialize, Serialize};
-use std::time::Duration;
 use std::{fs::File, thread, time::Duration};
 
 #[derive(PartialEq, Clone, Copy)]
