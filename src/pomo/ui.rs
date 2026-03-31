@@ -55,7 +55,19 @@ pub fn render(f: &mut Frame, app: &mut Pomo) {
 
             render_timer_screen(f, app, timer_v_center[1]);
 
-            let footer = "tab session • t tasks • e edit time • space pause • r reset • q quit";
+            let alarm_help = if app.play_alarm {
+                "s enable alarm"
+            } else {
+                "s disable alarm"
+            };
+            let start_help = if app.is_running {
+                "space pause"
+            } else {
+                "space start"
+            };
+            let footer = format!(
+                "tab session • t tasks • e edit time • {start_help} • {alarm_help} • r reset • q quit"
+            );
             f.render_widget(
                 Paragraph::new(footer)
                     .alignment(Alignment::Center)

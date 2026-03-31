@@ -19,6 +19,7 @@ impl Pomo {
             short_break_mins: self.short_break_time.as_secs() / 60,
             long_break_mins: self.long_break_time.as_secs() / 60,
             tasks: self.tasks.clone(),
+            play_alarm: self.play_alarm,
         };
 
         let toml = toml::to_string_pretty(&config)?;
@@ -42,6 +43,7 @@ impl Pomo {
                     app.short_break_time = Duration::from_secs(config.short_break_mins * 60);
                     app.long_break_time = Duration::from_secs(config.long_break_mins * 60);
                     app.tasks = config.tasks;
+                    app.play_alarm = config.play_alarm;
                     app.reset_timer_to_mode();
                 }
             }
@@ -112,6 +114,8 @@ impl Pomo {
                     }
                 }
 
+                (AppScreen::Timer, KeyCode::Char('s')) => self.play_alarm = !self.play_alarm,
+                (AppScreen::Timer, KeyCode::Char('S')) => Pomo::play_alarm(), // Test alarm sound
                 (AppScreen::Timer, KeyCode::Char('t')) => self.screen = AppScreen::Tasks,
                 (AppScreen::Timer, KeyCode::Char(' ')) => self.is_running = !self.is_running,
                 (AppScreen::Timer, KeyCode::Char('r')) => self.time_remaining = self.work_time,

@@ -1,8 +1,10 @@
 use chrono::prelude::{DateTime, Local};
 use notify_rust::Notification;
 use ratatui::widgets::ListState;
+use rodio::Decoder;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
+use std::{fs::File, thread, time::Duration};
 
 #[derive(PartialEq, Clone, Copy)]
 pub enum SessionMode {
@@ -32,6 +34,7 @@ pub struct Config {
     pub short_break_mins: u64,
     pub long_break_mins: u64,
     pub tasks: Vec<Task>,
+    pub play_alarm: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -57,11 +60,13 @@ pub struct Pomo {
     pub task_state: ListState,
     pub input_buffer: String,
     pub should_quit: bool,
+    pub play_alarm: bool,
 }
 
 impl Pomo {
     pub fn new() -> Self {
         let work = Duration::from_secs(25 * 60);
+
         Self {
             screen: AppScreen::Timer,
             mode: SessionMode::Work,
@@ -79,6 +84,7 @@ impl Pomo {
             task_state: ListState::default(),
             input_buffer: String::new(),
             should_quit: false,
+            play_alarm: true,
         }
     }
 
@@ -116,6 +122,10 @@ impl Pomo {
 
             self.send_notification(title, msg);
             self.transition_next_session();
+            if self.play_alarm {
+                Pomo::play_alarm();
+            }
+
             self.is_running = true;
         }
     }
@@ -158,5 +168,22 @@ impl Pomo {
             .appname("pomoru")
             .timeout(5000)
             .show();
+    }
+
+    pub fn play_alarm() {
+        thread::spawn(|| {
+            let mut stream_handle = rodio::OutputStreamBuilder::open_default_stream()
+                .expect("open default audio stream");
+            stream_handle.log_on_drop(false);
+            let sink = rodio::Sink::connect_new(&stream_handle.mixer());
+            let audio_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("src/audio/alarm-digital.mp3");
+            let source = Decoder::try_from(File::open(&audio_path).unwrap()).unwrap();
+            // Play the sound directly on the device
+            sink.append(source);
+            sink.play();
+
+            sink.sleep_until_end();
+        });
     }
 }
