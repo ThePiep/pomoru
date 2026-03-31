@@ -1,29 +1,41 @@
-use ratatui::widgets::ListState;
-use std::time::Duration;
-use serde::{ Serialize, Deserialize };
 use notify_rust::Notification;
+use ratatui::widgets::ListState;
+use serde::{Deserialize, Serialize};
+use std::time::Duration;
 
 #[derive(PartialEq, Clone, Copy)]
-pub enum SessionMode { Work, ShortBreak, LongBreak }
+pub enum SessionMode {
+    Work,
+    ShortBreak,
+    LongBreak,
+}
 
 #[derive(PartialEq, Clone, Copy)]
-pub enum AppScreen { Timer, Tasks }
+pub enum AppScreen {
+    Timer,
+    Tasks,
+}
 
 #[derive(PartialEq, Clone, Copy)]
-pub enum InputMode { Normal, Insert, Edit, TimerEdit }
+pub enum InputMode {
+    Normal,
+    Insert,
+    Edit,
+    TimerEdit,
+}
 
 #[derive(Serialize, Deserialize)]
 pub struct Config {
     pub work_time_mins: u64,
     pub short_break_mins: u64,
     pub long_break_mins: u64,
-    pub tasks: Vec<Task>
+    pub tasks: Vec<Task>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Task {
     pub title: String,
-    pub is_done: bool
+    pub is_done: bool,
 }
 
 pub struct Pomo {
@@ -40,7 +52,7 @@ pub struct Pomo {
     pub tasks: Vec<Task>,
     pub task_state: ListState,
     pub input_buffer: String,
-    pub should_quit: bool
+    pub should_quit: bool,
 }
 
 impl Pomo {
@@ -60,7 +72,7 @@ impl Pomo {
             tasks: Vec::new(),
             task_state: ListState::default(),
             input_buffer: String::new(),
-            should_quit: false
+            should_quit: false,
         }
     }
 
