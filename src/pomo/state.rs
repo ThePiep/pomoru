@@ -1,3 +1,4 @@
+use chrono::prelude::{DateTime, Local};
 use notify_rust::Notification;
 use ratatui::widgets::ListState;
 use serde::{Deserialize, Serialize};
@@ -22,6 +23,7 @@ pub enum InputMode {
     Insert,
     Edit,
     TimerEdit,
+    StartEdit,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -43,6 +45,8 @@ pub struct Pomo {
     pub mode: SessionMode,
     pub input_mode: InputMode,
     pub work_time: Duration,
+    pub start_time: Option<DateTime<Local>>,
+    pub focus_time: Duration,
     pub short_break_time: Duration,
     pub long_break_time: Duration,
     pub time_remaining: Duration,
@@ -63,6 +67,8 @@ impl Pomo {
             mode: SessionMode::Work,
             input_mode: InputMode::Normal,
             work_time: work,
+            start_time: None,
+            focus_time: Duration::from_secs(0),
             short_break_time: Duration::from_secs(5 * 60),
             long_break_time: Duration::from_secs(15 * 60),
             time_remaining: work,
@@ -78,7 +84,14 @@ impl Pomo {
 
     pub fn tick(&mut self) {
         if self.is_running && self.time_remaining.as_secs() > 0 {
+            if self.start_time == None {
+                self.start_time = Some(Local::now());
+            }
+
             self.time_remaining -= Duration::from_secs(1);
+            if self.mode == SessionMode::Work {
+                self.focus_time += Duration::from_secs(1);
+            }
         } else if self.is_running && self.time_remaining.as_secs() == 0 {
             let focus_msg = [
                 "I'm tired, boss...",

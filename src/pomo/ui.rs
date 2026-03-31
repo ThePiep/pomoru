@@ -1,4 +1,5 @@
 use crate::pomo::state::{AppScreen, InputMode, Pomo, SessionMode};
+use chrono::{NaiveTime, TimeDelta};
 use ratatui::{prelude::*, widgets::*};
 
 const MOCHA_LAVENDER: Color = Color::Rgb(180, 190, 254);
@@ -13,7 +14,9 @@ pub fn render(f: &mut Frame, app: &mut Pomo) {
     let root_layout = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Min(0),
+            Constraint::Length(1),
+            Constraint::Length(1),
+            Constraint::Min(1),
             Constraint::Length(1),
             Constraint::Length(1),
         ])
@@ -21,6 +24,26 @@ pub fn render(f: &mut Frame, app: &mut Pomo) {
 
     match app.screen {
         AppScreen::Timer => {
+            let mut parts = Vec::new();
+
+            if let Some(t) = app.start_time {
+                parts.push(format!("Session Start: {}", t.format("%H:%M")));
+            }
+
+            parts.push(format!(
+                "Time Spent in Focus: {}",
+                format_focus_time(app.focus_time)
+            ));
+
+            let header = parts.join(", ");
+
+            f.render_widget(
+                Paragraph::new(header)
+                    .alignment(Alignment::Center)
+                    .style(Style::default().fg(MOCHA_OVERLAY0)),
+                root_layout[1],
+            );
+
             let timer_v_center = Layout::default()
                 .direction(Direction::Vertical)
                 .constraints([
@@ -28,7 +51,7 @@ pub fn render(f: &mut Frame, app: &mut Pomo) {
                     Constraint::Length(15),
                     Constraint::Fill(1),
                 ])
-                .split(root_layout[0]);
+                .split(root_layout[2]);
 
             render_timer_screen(f, app, timer_v_center[1]);
 
@@ -37,15 +60,17 @@ pub fn render(f: &mut Frame, app: &mut Pomo) {
                 Paragraph::new(footer)
                     .alignment(Alignment::Center)
                     .style(Style::default().fg(MOCHA_OVERLAY0)),
-                root_layout[1],
+                root_layout[3],
             );
         }
         AppScreen::Tasks => {
-            render_task_screen(f, app, root_layout[1]);
+            render_task_screen(f, app, root_layout[3]);
         }
     }
 
-    if let InputMode::Insert | InputMode::Edit | InputMode::TimerEdit = app.input_mode {
+    if let InputMode::Insert | InputMode::Edit | InputMode::TimerEdit | InputMode::StartEdit =
+        app.input_mode
+    {
         render_input_modal(f, app);
     }
 }
@@ -189,8 +214,11 @@ pub fn render_task_screen(f: &mut Frame, app: &mut Pomo, footer_area: Rect) {
 }
 
 pub fn render_input_modal(f: &mut Frame, app: &Pomo) {
-    let (title, width) = match app.input_mode {
+    let (title_text, width) = match app.input_mode {
         InputMode::TimerEdit => (" Set Minutes ", 30),
+        InputMode::StartEdit => (" Set HH:MM ", 30),
+        InputMode::Insert => (" New Task ", 50),
+        InputMode::Edit => (" Edit Task ", 50),
         _ => (" Input ", 50),
     };
 
@@ -207,13 +235,6 @@ pub fn render_input_modal(f: &mut Frame, app: &Pomo) {
     };
 
     f.render_widget(Clear, area);
-
-    let title_text = match app.input_mode {
-        InputMode::Insert => " New Task ",
-        InputMode::Edit => " Edit Task ",
-        InputMode::TimerEdit => " Set Minutes ",
-        _ => title,
-    };
 
     let block = Block::default()
         .title(Span::styled(
@@ -280,6 +301,13 @@ pub fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
 }
 
 pub fn format_duration(duration: std::time::Duration) -> String {
-    let secs = duration.as_secs();
-    format!("{:02}:{:02}", secs / 60, secs % 60)
+    let td = TimeDelta::from_std(duration).unwrap_or_default();
+    let midnight = NaiveTime::from_hms_opt(0, 0, 0).expect("midnight is always valid");
+    (midnight + td).format("%M:%S").to_string()
+}
+
+pub fn format_focus_time(focus: std::time::Duration) -> String {
+    let td = TimeDelta::from_std(focus).unwrap_or_default();
+    let midnight = NaiveTime::from_hms_opt(0, 0, 0).expect("midnight is always valid");
+    (midnight + td).format("%_H:%M").to_string()
 }

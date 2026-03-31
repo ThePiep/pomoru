@@ -4,10 +4,11 @@ version = "0.1.1"
 edition = "2024"
 
 [dependencies]
+chrono = "0.4.44"
 crossterm = "0.29.0"
 directories = "6.0.0"
 notify-rust = "4.11.7"
 ratatui = "0.30.0"
 serde = { version = "1.0.228", features = ["derive"] }
-tokio = { version = "1.49.0", features = ["full"] }
+tokio = { version = "1.49.0", features = ["rt-multi-thread", "macros", "time"] }
 toml = "0.9.11"
